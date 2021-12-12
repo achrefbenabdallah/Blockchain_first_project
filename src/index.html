@@ -33,16 +33,33 @@
           <hr />
           <p id="accountAddress" class="text-center"></p>
 
-          <form onSubmit="App.castVote(); return false;">
+          <form id="f1" onSubmit="App.castVote(); return false;">
             <div class="form-group">
               <label for="candidatesSelect">Select Candidate</label>
               <select class="form-control" id="candidatesSelect">
               </select>
             </div>
             <button type="submit" class="btn btn-primary">Vote</button>
-            <hr /></form>
-          
+            <hr />
+          </form>
         </div>
+      </div>
+    </div>
+    <div class="form" id="f2">
+      <div class="col-lg-12">
+        <h1 class="text-center">Add Candidate</h1>
+          <!--form administrateur -->
+          <form  class="form-group">
+            <div class="form-group"> 
+              <label for="name">Enter the Name of Candidate : </label><br><hr>
+              <input class="form-control" type=text placeholder="Enter the Name of Candidate" name="name" id="name"/><hr>
+              <button type="submit" class="btn btn-primary" onclick="App.addCandidate()">Add candidate</button>
+            </div>
+            <hr />
+          </form>
+          <div id="add-candidate">
+
+          </div>
       </div>
     </div>
   </div>

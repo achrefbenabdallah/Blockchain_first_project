@@ -1,3 +1,4 @@
+var admins;
 App = {
   web3Provider: null,
   contracts: {},
@@ -19,6 +20,16 @@ App = {
       );
       web3 = new Web3(App.web3Provider);
     }
+    web3.eth.getAccounts((err, accounts) => {
+      admins = accounts.slice(0, 2);
+      web3 = new Web3(web3.currentProvider);
+    });
+
+    ethereum.on("accountsChanged", (a) => {
+      App.account = a[0];
+     App.updateAddCandidate();
+      App.render();
+    });
     return App.initContract();
   },
 
@@ -33,84 +44,130 @@ App = {
     });
   },
 
-  render: function() {
+  render: function () {
     var electionInstance;
     var loader = $("#loader");
     var content = $("#content");
-  
+
     loader.show();
     content.hide();
-  
+
     // Load account data
-    web3.eth.getCoinbase(function(err, account) {
+    web3.eth.getCoinbase(function (err, account) {
       if (err === null) {
         App.account = account;
         $("#accountAddress").html("Your Account: " + account);
+        var addCandidate = $("#add-section");
+        addCandidate.empty();
+        if (admins.includes(App.account)) {
+          addCandidate.append(
+          '<button type="button" class="btn btn-primary" data-toggle="f2" data-target="#f2">' +"Add Candidate" +"</button>"
+        );
+      }
       }
     });
-  
+
     // Load contract data
-    App.contracts.Election.deployed().then(function(instance) {
-      electionInstance = instance;
-      return electionInstance.candidatesCount();
-    }).then(function(candidatesCount) {
-      var candidatesResults = $("#candidatesResults");
-      candidatesResults.empty();
-  
-      var candidatesSelect = $('#candidatesSelect');
-      candidatesSelect.empty();
-  
-      for (var i = 1; i <= candidatesCount; i++) {
-        electionInstance.candidates(i).then(function(candidate) {
-          var id = candidate[0];
-          var name = candidate[1];
-          var voteCount = candidate[2];
-  
-          // Render candidate Result
-          var candidateTemplate = "<tr><th>" + id + "</th><td>" + name + "</td><td>" + voteCount + "</td></tr>"
-          candidatesResults.append(candidateTemplate);
-  
-          // Render candidate ballot option
-          var candidateOption = "<option value='" + id + "' >" + name + "</ option>"
-          candidatesSelect.append(candidateOption);
-        });
-      }
-      return electionInstance.voters(App.account);
-    }).then(function(hasVoted) {
-      // Do not allow a user to vote
-      if(hasVoted) {
-        $('form').hide();
-      }
-      loader.hide();
-      content.show();
-    }).catch(function(error) {
-      console.warn(error);
-    });
+    App.contracts.Election.deployed()
+      .then(function (instance) {
+        electionInstance = instance;
+        return electionInstance.candidatesCount();
+      })
+      .then(function (candidatesCount) {
+        var candidatesResults = $("#candidatesResults");
+        candidatesResults.empty();
+
+        var candidatesSelect = $("#candidatesSelect");
+        candidatesSelect.empty();
+
+        for (var i = 1; i <= candidatesCount; i++) {
+          electionInstance.candidates(i).then(function (candidate) {
+            var id = candidate[0];
+            var name = candidate[1];
+            var voteCount = candidate[2];
+
+            // Render candidate Result
+            var candidateTemplate =
+              "<tr><th>" +
+              id +
+              "</th><td>" +
+              name +
+              "</td><td>" +
+              voteCount +
+              "</td></tr>";
+            candidatesResults.append(candidateTemplate);
+
+            // Render candidate ballot option
+            var candidateOption =
+              "<option value='" + id + "' >" + name + "</ option>";
+            candidatesSelect.append(candidateOption);
+          });
+        }
+        return electionInstance.voters(App.account);
+      })
+      .then(async function (hasVoted) {
+        // Do not allow a user to vote
+        if (hasVoted) {
+          $("#f1").hide();
+        }
+        loader.hide();
+        content.show();
+      })
+      .catch(function (error) {
+        console.warn(error);
+      })
   },
-  castVote: function() {
-    var candidateId = $('#candidatesSelect').val();
-    App.contracts.Election.deployed().then(function(instance) {
-      return instance.vote(candidateId, { from: App.account });
-    }).then(function(result) {
-      // Wait for votes to update
-      $("#content").hide();
-      $("#loader").show();
-    }).catch(function(err) {
-      console.error(err);
-    });
-  },
-  listenForEvents: function() {
-    App.contracts.Election.deployed().then(function(instance) {
-      instance.votedEvent({}, {
-        fromBlock: 0,
-        toBlock: 'latest'
-      }).watch(function(error, event) {
-        console.log("event triggered", event)
-        // Reload when a new vote is recorded
-        App.render();
+  castVote: function () {
+    var candidateId = $("#candidatesSelect").val();
+    App.contracts.Election.deployed()
+      .then(function (instance) {
+        return instance.vote(candidateId, { from: App.account });
+      })
+      .then(function (result) {
+        // Wait for votes to update
+        $("#content").hide();
+        $("#loader").show();
+      })
+      .catch(function (err) {
+        console.error(err);
       });
+  },
+  listenForEvents: function () {
+    App.contracts.Election.deployed().then(function (instance) {
+      instance
+        .votedEvent(
+          {},
+          {
+            fromBlock: 0,
+            toBlock: "latest",
+          }
+        )
+        .watch(function (error, event) {
+          console.log("event triggered", event);
+          // Reload when a new vote is recorded
+          App.render();
+        });
     });
   },
+  addCandidate: function () {
+    var name = $("#name").val();
+    App.contracts.Election.deployed()
+    .then((instance) => {
+    return instance.addCandidate(name, { from: App.account });
+    })
+    .then(() => {
+    App.render();
+    document.getElementById("f2").style.display="none";
+    })
+    .catch((err) => {
+    console.error(err);
+    });
+    },
+    //update f2 form
+   updateAddCandidate: function () {
+      $("#f2").modal("hide");
+      $("#name").val("");
+          }
 };
 
 $(function () {
